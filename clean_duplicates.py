@@ -52,11 +52,16 @@ def clean_duplicates(input_name, output_name=None,
             file_writer.writerow(header)
 
             for line in file_reader:
-                len_set_values = len(set_values)
-                set_values.add(line[column] if column else tuple(line))
+                index = file_reader.line_num
+                print('Read %s lines.' % index, end='\r')\
+                if (index/10000).is_integer() else None
 
-                if len(set_values) != len_set_values:
-                    file_writer.writerow(line)
+                if line != header:
+                    len_set_values = len(set_values)
+                    set_values.add(line[column] if column else tuple(line))
+
+                    if len(set_values) != len_set_values:
+                        file_writer.writerow(line)
 
     int_lines_total = file_reader.line_num
     int_lines_fixed = int_lines_total - len(set_values) - 1
