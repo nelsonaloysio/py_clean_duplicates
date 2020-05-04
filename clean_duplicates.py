@@ -5,7 +5,9 @@
 Cleans duplicate lines from file by appending line
 or field value to a set() and comparing its length.
 
-usage: clean_duplicates.py [-h] [-o OUTPUT] [-c COLUMN] input
+usage: clean_duplicates [-h] [-o OUTPUT] [-c COLUMN] [-d DELIMITER]
+                        [-q {0,1,2,3}] [-e ENCODING]
+                        input
 
 positional arguments:
   input                 input file name
@@ -15,15 +17,29 @@ optional arguments:
   -o OUTPUT, --output OUTPUT
                         output file name
   -c COLUMN, --column COLUMN
-                        column index or title
+                        column index or title to find duplicate values
+  -d DELIMITER, --delimiter DELIMITER
+                        column field delimiter
+  -q {0,1,2,3}, --quoting {0,1,2,3}
+                        text quoting {0: 'minimal', 1: 'all',
+                        2: 'non-numeric', 3: 'none'}
+  -e ENCODING, --encoding ENCODING
+                        file encoding (default: utf-8)
 '''
 
 from argparse import ArgumentParser
-from csv import reader, writer, QUOTE_MINIMAL
+from csv import reader, writer
 from os.path import basename, splitext
 
+ENCODING = 'utf-8'
+
+QUOTING = {0: 'minimal',
+           1: 'all',
+           2: 'non-numeric',
+           3: 'none'}
+
 def clean_duplicates(input_name, output_name=None,
-    column=None, quoting=QUOTE_MINIMAL):
+    column=None, delimiter=None, quoting=0, encoding=ENCODING):
     '''
     Perform line duplicate removal.
     '''
@@ -33,11 +49,12 @@ def clean_duplicates(input_name, output_name=None,
         name, ext = splitext(basename(input_name))
         output_name = name + '_CLEANED' + ext
 
-    delimiter = get_file_delimiter(input_name)
+    if not delimiter:
+        delimiter = get_file_delimiter(input_name, encoding)
 
     set_values = set()
 
-    with open(input_name, 'rt', encoding='utf8', errors='ignore') as input_file:
+    with open(input_name, 'rt', encoding=encoding, errors='ignore') as input_file:
         file_reader = reader(input_file, delimiter=delimiter, quoting=quoting)
         header = next(file_reader)
 
@@ -47,7 +64,7 @@ def clean_duplicates(input_name, output_name=None,
         elif isinstance(column, int):
             column = header[column]
 
-        with open(output_name, 'w', newline='', encoding='utf8', errors='ignore') as output_file:
+        with open(output_name, 'w', newline='', encoding=encoding, errors='ignore') as output_file:
             file_writer = writer(output_file, delimiter=delimiter, quoting=quoting)
             file_writer.writerow(header)
 
@@ -71,15 +88,15 @@ def clean_duplicates(input_name, output_name=None,
           str(int_lines_fixed), 'duplicate lines.\n'+\
           str(int_lines_valid), 'lines after cleaning.')
 
-def get_file_delimiter(input_name):
+def get_file_delimiter(input_name, encoding=ENCODING):
     '''
     Returns character delimiter from file.
     '''
-    with open(input_name, 'rt', encoding='utf8') as input_file:
+    with open(input_name, 'rt', encoding=encoding) as input_file:
         file_reader = reader(input_file)
         header = str(next(file_reader))
 
-    for i in ['|', '\\t', ';', ',']:
+    for i in ['|', '\\t', ';', ',', ' ']:
         if i in header: # \\t != \t
             print('Delimiter set as "' + i + '".')
             return i.replace('\\t', '\t')
@@ -92,10 +109,16 @@ if __name__ == "__main__":
 
     parser.add_argument('input', action='store', help='input file name')
     parser.add_argument('-o', '--output', action='store', help='output file name')
-    parser.add_argument('-c', '--column', action='store', help='column index or title')
+    parser.add_argument('-c', '--column', action='store', help='column index or title to find duplicate values')
+    parser.add_argument('-d', '--delimiter', action='store', help='column field delimiter')
+    parser.add_argument('-q', '--quoting', action='store', type=int, choices=QUOTING.keys(), default=0, help='text quoting %s' % QUOTING)
+    parser.add_argument('-e', '--encoding', action='store', help='file encoding (default: %s)' % ENCODING)
 
     args = parser.parse_args()
 
     clean_duplicates(args.input,
                      args.output,
-                     args.column)
+                     args.column,
+                     args.delimiter,
+                     args.quoting,
+                     args.encoding)
