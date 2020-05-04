@@ -6,7 +6,7 @@ or field value to a set() and comparing its length.
 
 ```
 usage: clean_duplicates [-h] [-o OUTPUT] [-c COLUMN] [-d DELIMITER]
-                        [-q {0,1,2,3}] [-e ENCODING]
+                        [-q {0,1,2,3}] [-e ENCODING] [--index-ignore]
                         input
 
 positional arguments:
@@ -25,4 +25,5 @@ optional arguments:
                         2: 'non-numeric', 3: 'none'}
   -e ENCODING, --encoding ENCODING
                         file encoding (default: utf-8)
+  --index-ignore        bypass IndexError exceptions
 ```
