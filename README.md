@@ -26,4 +26,5 @@ optional arguments:
   -e ENCODING, --encoding ENCODING
                         file encoding (default: utf-8)
   --index-ignore        bypass IndexError exceptions
+  --output-ignored      lines with IndexError to another file
 ```

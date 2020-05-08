@@ -26,11 +26,13 @@ optional arguments:
   -e ENCODING, --encoding ENCODING
                         file encoding (default: utf-8)
   --index-ignore        bypass IndexError exceptions
+  --output-ignored      lines with IndexError to another file
 '''
 
 from argparse import ArgumentParser
 from csv import reader, writer
-from os.path import basename, splitext
+from os import remove
+from os.path import basename, isfile, splitext
 from sys import stderr
 
 ENCODING = 'utf-8'
@@ -41,8 +43,8 @@ QUOTING = {0: 'minimal',
            3: 'none'}
 
 def clean_duplicates(input_name, output_name=None,
-    column=None, delimiter=None, quoting=0,
-    encoding=ENCODING, index_ignore=False):
+    column=None, delimiter=None, quoting=0, encoding=ENCODING,
+    index_ignore=False, output_ignored=None):
     '''
     Perform line duplicate removal.
     '''
@@ -57,12 +59,19 @@ def clean_duplicates(input_name, output_name=None,
         print('Error: invalid column (0), must be >= 1.', file=stderr)
         raise SystemExit
 
+    if not delimiter:
+        delimiter = get_file_delimiter(input_name, encoding)
+
     if not output_name:
         name, ext = splitext(basename(input_name))
         output_name = name + '_CLEANED' + ext
 
-    if not delimiter:
-        delimiter = get_file_delimiter(input_name, encoding)
+    if output_ignored:
+        name, ext = splitext(basename(output_name))
+        errors_name = name + '_IGNORED' + ext
+
+        if isfile(errors_name):
+            remove(errors_name)
 
     with open(input_name, 'rt', encoding=encoding) as input_file:
         file_reader = reader(input_file, delimiter=delimiter, quoting=quoting)
@@ -103,6 +112,10 @@ def clean_duplicates(input_name, output_name=None,
 
                     except IndexError:
                         if index_ignore:
+                            if output_ignored:
+                                with open(errors_name, 'a', newline='', encoding=encoding) as errors_file:
+                                    errors_writer = writer(errors_file, delimiter=delimiter, quoting=quoting, quotechar=quotechar)
+                                    errors_writer.writerow(line)
                             continue
                         raise
 
@@ -139,6 +152,7 @@ if __name__ == "__main__":
     parser.add_argument('-q', '--quoting', action='store', type=int, choices=QUOTING.keys(), default=0, help='text quoting %s' % QUOTING)
     parser.add_argument('-e', '--encoding', action='store', help='file encoding (default: %s)' % ENCODING)
     parser.add_argument('--index-ignore', action='store_true', help='bypass IndexError exceptions')
+    parser.add_argument('--output-ignored', action='store_true', help='lines with IndexError to another file')
 
     args = parser.parse_args()
 
@@ -148,4 +162,5 @@ if __name__ == "__main__":
                      args.delimiter,
                      args.quoting,
                      args.encoding,
-                     args.index_ignore)
+                     args.index_ignore,
+                     args.output_ignored)
