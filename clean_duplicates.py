@@ -7,6 +7,7 @@ or field value to a set() and comparing its length.
 
 usage: clean_duplicates [-h] [-o OUTPUT] [-c COLUMN] [-d DELIMITER]
                         [-q {0,1,2,3}] [-e ENCODING] [--index-ignore]
+                        [--max-field-size-limit] [--output-ignored]
                         input
 
 positional arguments:
@@ -21,19 +22,20 @@ optional arguments:
   -d DELIMITER, --delimiter DELIMITER
                         column field delimiter
   -q {0,1,2,3}, --quoting {0,1,2,3}
-                        text quoting {0: 'minimal', 1: 'all',
-                        2: 'non-numeric', 3: 'none'}
+                        text quoting {0: 'minimal', 1: 'all', 2: 'non-numeric', 3: 'none'}
   -e ENCODING, --encoding ENCODING
                         file encoding (default: utf-8)
   --index-ignore        bypass IndexError exceptions
+  --max-field-size-limit
+                        extend field size limit to maximum allowed
   --output-ignored      lines with IndexError to another file
 '''
 
 from argparse import ArgumentParser
-from csv import reader, writer
+from csv import field_size_limit, reader, writer
 from os import remove
 from os.path import basename, isfile, splitext
-from sys import stderr
+from sys import maxsize, stderr
 
 ENCODING = 'utf-8'
 
@@ -44,7 +46,7 @@ QUOTING = {0: 'minimal',
 
 def clean_duplicates(input_name, output_name=None,
     column=None, delimiter=None, quoting=0, encoding=ENCODING,
-    index_ignore=False, output_ignored=None):
+    index_ignore=False, max_field_size=False, output_ignored=None):
     '''
     Perform line duplicate removal.
     '''
@@ -58,6 +60,9 @@ def clean_duplicates(input_name, output_name=None,
     if str(column) == '0':
         print('Error: invalid column (0), must be >= 1.', file=stderr)
         raise SystemExit
+
+    if max_field_size:
+        max_field_size_limit()
 
     if not delimiter:
         delimiter = get_file_delimiter(input_name, encoding)
@@ -141,6 +146,22 @@ def get_file_delimiter(input_name, encoding=ENCODING):
 
     return '\n'
 
+def max_field_size_limit(d=10):
+    '''
+    Extend the maximum allowed field size to
+    work around field limit errors reading files.
+    '''
+    max_size = int(maxsize)
+
+    while True:
+        max_size = int(max_size/d)
+        try:
+            field_size_limit(max_size)
+        except OverflowError:
+            pass
+        else:
+            return
+
 if __name__ == "__main__":
 
     parser = ArgumentParser()
@@ -152,6 +173,7 @@ if __name__ == "__main__":
     parser.add_argument('-q', '--quoting', action='store', type=int, choices=QUOTING.keys(), default=0, help='text quoting %s' % QUOTING)
     parser.add_argument('-e', '--encoding', action='store', help='file encoding (default: %s)' % ENCODING)
     parser.add_argument('--index-ignore', action='store_true', help='bypass IndexError exceptions')
+    parser.add_argument('--max-field-size-limit', action='store_true', help='extend field size limit to maximum allowed')
     parser.add_argument('--output-ignored', action='store_true', help='lines with IndexError to another file')
 
     args = parser.parse_args()
@@ -163,4 +185,5 @@ if __name__ == "__main__":
                      args.quoting,
                      args.encoding,
                      args.index_ignore,
+                     args.max_field_size_limit,
                      args.output_ignored)
